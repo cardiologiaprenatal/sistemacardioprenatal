@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 use App\Http\Controllers\AnaliseController;
 use App\Http\Controllers\AuthController;
@@ -29,7 +29,7 @@ Route::group(['middleware' => 'auth'], function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->name('dashboard');
 
-    // Rotas de AnÃ¡lise (IA) via Job para evitar timeout
+    // Rotas de Análise (IA) via Job para evitar timeout
     Route::post('/dashboard/analisar', [AnaliseController::class, 'iniciarAnalise'])->name('dashboard.analisar');
     Route::get('/dashboard/verificar-analise', [AnaliseController::class, 'verificarStatus'])->name('dashboard.verificarAnalise');
     Route::get('/dashboard/resultado-analise', [AnaliseController::class, 'obterResultado'])->name('dashboard.resultadoAnalise');

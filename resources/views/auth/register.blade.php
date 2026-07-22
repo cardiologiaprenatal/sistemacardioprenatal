@@ -2,7 +2,7 @@
 
 @section('title', 'Cadastro')
 
-@section('subtitle', 'Cadastro do mÃ©dico')
+@section('subtitle', 'Cadastro do médico')
 
 @section('content')
 
@@ -198,7 +198,7 @@
 
     .field-error { font-size: 12px; color: var(--danger); margin-top: 5px; display: flex; align-items: center; gap: 4px; }
 
-    /* ForÃ§a da senha */
+    /* Força da senha */
     .password-strength { margin-top: 7px; display: none; }
     .strength-bar { height: 4px; border-radius: 99px; background: var(--border); overflow: hidden; margin-bottom: 4px; }
     .strength-fill { height: 100%; border-radius: 99px; width: 0%; transition: width .3s, background .3s; }
@@ -211,7 +211,7 @@
     }
     .btn-eye:hover { color: var(--accent); }
 
-    /* BotÃ£o */
+    /* Botão */
     .btn-primary {
         display: flex; align-items: center; justify-content: center; gap: 8px;
         width: 100%; padding: 14px;
@@ -272,7 +272,7 @@
                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
             </svg>
         </div>
-        <h1 class="register-title">Criar conta de mÃ©dico</h1>
+        <h1 class="register-title">Criar conta de médico</h1>
         <p class="register-subtitle">Preencha seus dados para acessar o sistema (CRM, nome e contato).</p>
         <span class="register-badge">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
@@ -293,7 +293,7 @@
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
                     </svg>
                     <input type="text" id="nome" name="nome" value="{{ old('nome') }}"
-                        placeholder="Ex: Dr. JoÃ£o Silva" autocomplete="name"
+                        placeholder="Ex: Dr. João Silva" autocomplete="name"
                         class="field-input {{ $errors->has('nome') ? 'is-error' : '' }}">
                 </div>
                 @error('nome')
@@ -350,7 +350,7 @@
                         <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                     </svg>
                     <input type="password" id="password" name="password"
-                        placeholder="MÃ­nimo 8 caracteres" autocomplete="new-password"
+                        placeholder="Mínimo 8 caracteres" autocomplete="new-password"
                         class="field-input {{ $errors->has('password') ? 'is-error' : '' }}">
                     <button type="button" class="btn-eye" id="togglePassword" aria-label="Mostrar/ocultar senha">
                         <svg id="eyeIcon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -381,7 +381,7 @@
     <div class="divider"><span>ou</span></div>
 
     <div class="login-row">
-        <p>JÃ¡ tem uma conta? <a href="{{ route('login') }}" class="link-login">Entrar</a></p>
+        <p>Já tem uma conta? <a href="{{ route('login') }}" class="link-login">Entrar</a></p>
     </div>
 
 </div>
@@ -437,7 +437,7 @@
 
         const levels = [
             { pct: '25%', color: '#e74c3c', text: 'Fraca' },
-            { pct: '50%', color: '#e67e22', text: 'RazoÃ¡vel' },
+            { pct: '50%', color: '#e67e22', text: 'Razoável' },
             { pct: '75%', color: '#f1c40f', text: 'Boa' },
             { pct: '100%',color: '#27ae60', text: 'Forte' },
         ];
@@ -467,15 +467,28 @@
         fetch(@json(route('users.store')), {
             method: 'POST',
             headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
             },
-            body: formData
+            body: formData,
+            credentials: 'same-origin',
         })
         .then(async response => {
-            const data = await response.json();
-            if (!response.ok) throw data;
+            const raw = await response.text();
+            let data = null;
+            try {
+                data = raw ? JSON.parse(raw) : null;
+            } catch (_) {
+                if (response.status === 419 || /Page Expired|CSRF/i.test(raw)) {
+                    throw { message: 'Sessão expirada. Recarregue a página (F5) e tente novamente.' };
+                }
+                throw { message: `Resposta inválida do servidor (${response.status}). Recarregue a página.` };
+            }
 
-            const msg = data.message || 'Conta criada com sucesso! Redirecionando para o loginâ€¦';
+            if (!response.ok) throw data || { message: `Erro no servidor (${response.status})` };
+
+            const msg = data.message || 'Conta criada com sucesso! Redirecionando para o login…';
             const next = (data.redirect || '/login');
 
             new Noty({
@@ -502,11 +515,16 @@
                 return;
             }
 
+            let msg = error.message || 'Erro ao criar conta';
+            if (typeof msg === 'string' && msg.includes('Unexpected token')) {
+                msg = 'Sessão expirada. Recarregue a página (F5) e tente novamente.';
+            }
+
             new Noty({
                 type: 'error',
                 layout: 'topRight',
-                text: error.message || 'Erro ao criar conta',
-                timeout: 3000
+                text: msg,
+                timeout: 4000
             }).show();
         });
     });

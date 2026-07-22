@@ -48,7 +48,7 @@ class AuthController extends Controller
         }
 
         return response()->json([
-            'errors' => ['crm' => ['CRM ou senha invÃ¡lidos']],
+            'errors' => ['crm' => ['CRM ou senha inválidos']],
         ], 401);
     }
 

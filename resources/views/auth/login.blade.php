@@ -330,12 +330,22 @@
             headers: {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                 'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
             },
             body: new FormData(this),
+            credentials: 'same-origin',
         })
         .then(async response => {
-            const isJson = response.headers.get('content-type')?.includes('application/json');
-            const data = isJson ? await response.json() : null;
+            const raw = await response.text();
+            let data = null;
+            try {
+                data = raw ? JSON.parse(raw) : null;
+            } catch (_) {
+                if (response.status === 419 || /Page Expired|CSRF/i.test(raw)) {
+                    throw { message: 'Sessão expirada. Recarregue a página (F5) e tente novamente.' };
+                }
+                throw { message: `Resposta inválida do servidor (${response.status}). Recarregue a página.` };
+            }
 
             if (!response.ok) {
                 throw data || { message: `Erro no servidor (${response.status})` };
@@ -358,12 +368,15 @@
             if (error.errors) {
                 msg = Object.values(error.errors).flat()[0];
             }
+            if (typeof msg === 'string' && msg.includes('Unexpected token')) {
+                msg = 'Sessão expirada. Recarregue a página (F5) e tente novamente.';
+            }
 
             new Noty({
                 type: 'error',
                 layout: 'topRight',
                 text: msg,
-                timeout: 3000,
+                timeout: 4000,
             }).show();
         });
     });

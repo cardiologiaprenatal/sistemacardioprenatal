@@ -2,12 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Analise;
 use App\Models\Consulta;
 use App\Models\Gestante;
+use App\Services\DashboardAnaliseService;
 
 class DashboardController extends Controller
 {
+    public function __construct(
+        private DashboardAnaliseService $dashboardAnalise,
+    ) {}
+
     public function index()
     {
         $totalGestantes = Gestante::count();
@@ -39,6 +43,12 @@ class DashboardController extends Controller
             ->limit(8)
             ->get();
 
+        $distribuicaoRisco = $this->dashboardAnalise->distribuicaoRisco();
+        $filaEcocardiograma = $this->dashboardAnalise->filaEcocardiograma(20);
+        $indicadoresModelo = $this->dashboardAnalise->indicadoresModelo();
+        $analisesRecentes = $this->dashboardAnalise->analisesRecentes(10);
+        $graficosPopulacionais = $this->dashboardAnalise->dadosGraficosPopulacionais();
+
         return view('dashboard', [
             'totalGestantes' => $totalGestantes,
             'totalConsultas' => $totalConsultas,
@@ -51,7 +61,11 @@ class DashboardController extends Controller
             'consultasComDiabetes' => $consultasComDiabetes,
             'consultasComHipertensao' => $consultasComHipertensao,
             'consultasRecentes' => $consultasRecentes,
-            'analise' => Analise::first(),
+            'distribuicaoRisco' => $distribuicaoRisco,
+            'filaEcocardiograma' => $filaEcocardiograma,
+            'indicadoresModelo' => $indicadoresModelo,
+            'analisesRecentes' => $analisesRecentes,
+            'graficosPopulacionais' => $graficosPopulacionais,
             'hoje' => now()->format('d/m/Y'),
         ]);
     }

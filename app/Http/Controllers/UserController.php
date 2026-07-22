@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
@@ -38,14 +37,15 @@ class UserController extends Controller
                 'name' => $request->nome,
                 'crm' => $request->crm,
                 'telefone' => $request->telefone,
-                'password' => Hash::make($request->password),
+                // Plain password: User model casts 'password' => 'hashed'
+                'password' => $request->password,
                 'role' => 'user',
             ]);
         } catch (\Throwable $e) {
-            Log::error('Erro ao registrar usuÃ¡rio: '.$e->getMessage());
+            Log::error('Erro ao registrar usuário: '.$e->getMessage());
 
             return response()->json([
-                'message' => 'Erro ao criar usuÃ¡rio. Verifique se a tabela users possui as colunas name, crm e telefone.',
+                'message' => 'Erro ao criar usuário. Verifique se a tabela users possui as colunas name, crm e telefone.',
                 'error' => $e->getMessage(),
             ], 500);
         }
@@ -53,7 +53,7 @@ class UserController extends Controller
         $request->session()->regenerate();
 
         return response()->json([
-            'message' => 'Cadastro realizado com sucesso! FaÃ§a login com seu CRM e senha.',
+            'message' => 'Cadastro realizado com sucesso! Faça login com seu CRM e senha.',
             'redirect' => route('login'),
         ], 201);
     }
