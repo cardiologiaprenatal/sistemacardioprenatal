@@ -1,239 +1,257 @@
 @extends('layouts.app')
 
-@section('title', $gestante->nome_exibicao.' — Cardioprenatal')
+@section('title', $gestante->nome_exibicao.'. Cardioprenatal')
 
 @section('content')
-<div style="padding-bottom: 32px;">
-    <div style="max-width: 1152px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px;">
+@php
+    use App\Models\User;
+
+    $podeAnalises = auth()->user()?->can(User::ABILITY_ANALISES);
+    $podeGerenciarGestantes = auth()->user()?->can(User::ABILITY_GESTANTES_MANAGE);
+    $podeVerAgenda = auth()->user()?->can(User::ABILITY_CONSULTAS_AGENDA);
+    $podeConsultas = auth()->user()?->can(User::ABILITY_CONSULTAS_MANAGE);
+    $podeDirecionarAtendimento = $podeDirecionarAtendimento ?? (bool) auth()->user()?->canDirecionarAtendimentoGestante();
+    $podeEnviarEmail = (bool) auth()->user()?->canAtenderWhatsappGestante()
+        && ($atendimentoPersonalizadoLiberado ?? $gestante->atendimentoPersonalizadoLiberado())
+        && ! empty($gestante->email);
+    $temGraficosIa = session('resultado_analise_ia') && is_array(session('resultado_analise_ia')) && ! empty(session('resultado_analise_ia')['imagens']);
+@endphp
+<style>
+    .gestante-identidade { padding: 28px 32px 26px; }
+    .gestante-identidade-texto {
+        min-width: 0;
+        flex: 1 1 240px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    .gestante-identidade-texto .page-title {
+        margin: 0;
+        max-width: 100%;
+        line-height: 1.25;
+    }
+    .gestante-identidade-texto p { margin: 0; }
+    .gestante-area-nav {
+        display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0 4px;
+        padding: 6px; border: 1px solid var(--border); border-radius: 12px;
+        background: var(--surface);
+    }
+    .gestante-area-nav a {
+        flex: 1 1 auto; min-width: 7rem; text-align: center;
+        font-size: 13px; font-weight: 600; text-decoration: none;
+        color: var(--muted); padding: 12px 16px; border-radius: 10px;
+    }
+    .gestante-area-nav a:hover { color: var(--primary); background: var(--accent-light); }
+    .gestante-area {
+        scroll-margin-top: 96px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+    .gestante-area-kicker {
+        font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+        text-transform: uppercase; color: var(--muted); margin: 0;
+    }
+    .gestante-area .form-field-grid { gap: 22px 32px; }
+    @media (max-width: 640px) {
+        .gestante-identidade { padding: 22px 18px 20px; }
+    }
+</style>
+<div class="page-stack">
 
         @if (session('success'))
             <div class="main-card" role="status" style="margin-bottom: 0; border-left: 4px solid var(--success); background: rgba(39, 174, 96, 0.08);">
                 <p style="margin: 0; font-size: 15px; color: var(--text);">{{ session('success') }}</p>
             </div>
         @endif
-        @if (session('warning'))
-            <div class="main-card" role="alert" style="margin-bottom: 0; border-left: 4px solid #e67e22; background: rgba(230, 126, 34, 0.08);">
-                <p style="margin: 0; font-size: 15px; color: var(--text);">{{ session('warning') }}</p>
+        @if ($errors->any())
+            <div class="main-card" role="alert" style="margin-bottom: 0; border-left: 4px solid #c0392b; background: rgba(192, 57, 43, 0.08);">
+                @foreach ($errors->all() as $erro)
+                    <p style="margin: 0; font-size: 15px; color: var(--text);">{{ $erro }}</p>
+                @endforeach
             </div>
         @endif
 
-        <!-- Cabeçalho -->
-        <div class="main-card" style="margin-bottom: 0;">
-            <div style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 20px;">
-                <div>
-                    <p style="font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px;">Gestante</p>
-                    <h2 class="page-title" style="font-size: 28px; margin: 0;">
+        <div class="main-card gestante-identidade" style="margin-bottom: 0;">
+            <div style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 24px;">
+                <div class="gestante-identidade-texto">
+                    <p style="font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);">Gestante</p>
+                    <h2 class="page-title">
                         {{ $gestante->nome_exibicao }}
                     </h2>
-                    <div style="margin-top: 16px; display: grid; gap: 8px; font-size: 14px; color: var(--muted);">
-                        <p>
-                            Número do cadastro:
-                            <strong style="color: var(--text);">#{{ $gestante->id }}</strong>
-                        </p>
-                        <p>
-                            Nascimento:
-                            <strong style="color: var(--text);">
-                                {{ $gestante->data_nascimento ? \Carbon\Carbon::parse($gestante->data_nascimento)->format('d/m/Y') : 'Não informada' }}
-                            </strong>
-                        </p>
-                        <p>
-                            CPF:
-                            <strong style="color: var(--text);">{{ $gestante->cpf ? $gestante->cpf_formatado : '—' }}</strong>
-                        </p>
-                        <p>
-                            Telefone:
-                            <strong style="color: var(--text);">{{ $gestante->telefone ? $gestante->telefone_formatado : '—' }}</strong>
-                            @if ($gestante->telefone)
-                                <span style="font-size: 11px; display: block; margin-top: 2px; color: var(--muted);">Número normalizado: {{ $gestante->telefone }}</span>
-                            @endif
-                        </p>
-                        <p>
-                            Consultas:
-                            <strong style="color: var(--text);">{{ $gestante->consultas->count() }}</strong>
-                        </p>
-                    </div>
+                    <p style="font-size: 14px; color: var(--muted);">
+                        Cadastro <strong style="color: var(--text);">#{{ $gestante->id }}</strong>
+                    </p>
                 </div>
-
+                @if ($podeEnviarEmail || $podeGerenciarGestantes)
                 <div class="gestante-header-actions">
+                    @if ($podeEnviarEmail)
+                    <button type="button"
+                            class="btn-secondary-outline"
+                            id="btnAbrirEmail"
+                            @disabled(empty($emailHabilitado))
+                            title="{{ ! empty($emailHabilitado) ? 'Enviar mensagem por e-mail' : 'Envio de e-mail em espera no momento' }}">
+                        Enviar e-mail
+                    </button>
+                    @endif
+                    @if ($podeGerenciarGestantes)
                     <a href="{{ route('gestantes.edit', $gestante) }}"
                        style="display: inline-flex; align-items: center; padding: 12px 20px; border-radius: 12px; border: 1px solid var(--border); color: var(--primary); text-decoration: none; font-weight: 600;">
                         Editar dados
                     </a>
-                    <a href="{{ route('consultas.create', ['id' => $gestante->id]) }}" class="btn-primary-custom">
-                        + Nova consulta
-                    </a>
+                    @endif
                 </div>
+                @endif
             </div>
         </div>
 
-        <!-- Seção de Análise da IA (aparece após clicar no botão) -->
-        @if (session('resultado_analise_ia') && is_array(session('resultado_analise_ia')))
-            @php $resultado_ia = session('resultado_analise_ia'); @endphp
-            <div class="main-card">
-                <h2 class="card-title" style="font-size: 20px; margin-bottom: 16px;">Análise de IA</h2>
-                @if (!empty($resultado_ia['imagens']))
-                    <div class="form-page-grid form-page-grid--3">
-                        @foreach ($resultado_ia['imagens'] as $titulo => $imagem_base64)
-                            <div class="form-section" style="padding: 18px;">
-                                <h3 class="form-section-title" style="font-size: 16px; margin-bottom: 12px;">{{ str_replace('_', ' ', $titulo) }}</h3>
-                                <img src="{{ $imagem_base64 }}" alt="Gráfico de {{ $titulo }}" style="width: 100%; height: auto; border-radius: 12px;">
-                            </div>
-                        @endforeach
-                    </div>
-                @endif
-            </div>
-        @endif
+        <div id="painel-consulta">
+            @include('partials.gestante-aba-consulta', [
+                'gestante' => $gestante,
+                'consultaAtual' => $consultaAtual ?? null,
+                'historicoConsultas' => $historicoConsultas ?? collect(),
+                'podeConsultas' => $podeConsultas,
+                'podeAnalises' => $podeAnalises,
+                'podeVerAgenda' => $podeVerAgenda,
+                'podeGerenciarGestantes' => $podeGerenciarGestantes,
+                'podeDirecionarAtendimento' => $podeDirecionarAtendimento ?? false,
+                'atendimentoPersonalizadoLiberado' => $atendimentoPersonalizadoLiberado ?? false,
+                'encaminhadaParaFilaEco' => $encaminhadaParaFilaEco ?? false,
+                'temGraficosIa' => $temGraficosIa,
+            ])
+        </div>
 
-        <!-- Consultas -->
-        @forelse ($gestante->consultas as $consulta)
-            @php
-                $idade = null;
-                if ($gestante->data_nascimento && $consulta->data_consulta) {
-                    $idade = \Carbon\Carbon::parse($consulta->data_consulta)->diffInYears(\Carbon\Carbon::parse($gestante->data_nascimento));
-                }
-            @endphp
-            <div class="main-card">
-                <div class="consulta-resumo-head">
-                    <div>
-                        <h2 class="card-title" style="font-size: 22px; margin: 0;">Consulta nº {{ $consulta->consulta_numero }}</h2>
-                        <p style="color: var(--muted); font-size: 14px; margin-top: 10px; line-height: 1.5;">
-                            @if ($consulta->data_consulta)
-                                {{ $consulta->data_consulta->format('d/m/Y') }}
-                            @else
-                                —
-                            @endif
-                            @if ($consulta->idade_gestacional)
-                                · {{ $consulta->idade_gestacional }} sem
-                            @endif
-                        </p>
-                    </div>
-                    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
-                        <span class="consulta-pill {{ $consulta->chd_confirmada ? 'consulta-pill--alert' : 'consulta-pill--ok' }}">
-                            CHD {{ $consulta->chd_confirmada ? 'confirmada' : 'não confirmada' }}
-                        </span>
-                        <a href="{{ route('consultas.edit', $consulta->id) }}" class="btn-table btn-table--primary">Editar consulta</a>
-                    </div>
-                </div>
-
-                <div class="form-page-grid form-page-grid--2" style="margin-top: 16px;">
-                    <div class="form-section">
-                        <h3 class="form-section-title">Dados da gestante (consulta)</h3>
-                        <div class="form-field-grid form-field-grid--2">
-                            <div class="form-field" style="margin-bottom: 0;">
-                                <span class="form-label">Idade na consulta</span>
-                                <p class="consulta-valor">{{ $idade !== null ? $idade.' anos' : '—' }}</p>
-                            </div>
-                            <div class="form-field" style="margin-bottom: 0;">
-                                <span class="form-label">Idade gestacional</span>
-                                <p class="consulta-valor">{{ $consulta->idade_gestacional ?? '—' }} sem</p>
-                            </div>
-                            <div class="form-field" style="margin-bottom: 0;">
-                                <span class="form-label">Altura</span>
-                                <p class="consulta-valor">{{ $consulta->altura ?? '—' }} cm</p>
-                            </div>
-                            <div class="form-field" style="margin-bottom: 0;">
-                                <span class="form-label">Peso</span>
-                                <p class="consulta-valor">{{ $consulta->peso ?? '—' }} kg</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-section">
-                        <h3 class="form-section-title">Sinais vitais</h3>
-                        <div class="form-field-grid form-field-grid--2">
-                            <div class="form-field" style="margin-bottom: 0;">
-                                <span class="form-label">Pressão sistólica</span>
-                                <p class="consulta-valor">{{ $consulta->pressao_sistolica ?? '—' }}</p>
-                            </div>
-                            <div class="form-field" style="margin-bottom: 0;">
-                                <span class="form-label">BPM materno</span>
-                                <p class="consulta-valor">{{ $consulta->bpm_materno ?? '—' }}</p>
-                            </div>
-                            <div class="form-field" style="margin-bottom: 0;">
-                                <span class="form-label">Saturação</span>
-                                <p class="consulta-valor">{{ $consulta->saturacao !== null && $consulta->saturacao !== '' ? $consulta->saturacao.'%' : '—' }}</p>
-                            </div>
-                            <div class="form-field" style="margin-bottom: 0;">
-                                <span class="form-label">Temperatura</span>
-                                <p class="consulta-valor">{{ $consulta->temperatura_corporal !== null && $consulta->temperatura_corporal !== '' ? $consulta->temperatura_corporal.' °C' : '—' }}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-section">
-                        <h3 class="form-section-title">Dados laboratoriais</h3>
-                        <div class="form-field-grid form-field-grid--2">
-                            <div class="form-field" style="margin-bottom: 0;">
-                                <span class="form-label">Glicemia jejum</span>
-                                <p class="consulta-valor">{{ $consulta->glicemia_jejum ?? '—' }}</p>
-                            </div>
-                            <div class="form-field" style="margin-bottom: 0;">
-                                <span class="form-label">Glicemia pós-prandial</span>
-                                <p class="consulta-valor">{{ $consulta->glicemia_pos_prandial ?? '—' }}</p>
-                            </div>
-                            <div class="form-field" style="margin-bottom: 0;">
-                                <span class="form-label">HbA1c</span>
-                                <p class="consulta-valor">{{ $consulta->hba1c !== null && $consulta->hba1c !== '' ? $consulta->hba1c.'%' : '—' }}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-section">
-                        <h3 class="form-section-title">Dados fetais</h3>
-                        <div class="form-field-grid form-field-grid--2">
-                            <div class="form-field" style="margin-bottom: 0;">
-                                <span class="form-label">FC fetal</span>
-                                <p class="consulta-valor">{{ $consulta->frequencia_cardiaca_fetal ?? '—' }}</p>
-                            </div>
-                            <div class="form-field" style="margin-bottom: 0;">
-                                <span class="form-label">Circ. cefálica</span>
-                                <p class="consulta-valor">{{ $consulta->circunferencia_cefalica_fetal_mm !== null && $consulta->circunferencia_cefalica_fetal_mm !== '' ? $consulta->circunferencia_cefalica_fetal_mm.' mm' : '—' }}</p>
-                            </div>
-                            <div class="form-field" style="margin-bottom: 0;">
-                                <span class="form-label">Circ. abdominal</span>
-                                <p class="consulta-valor">{{ $consulta->circunferencia_abdominal_mm !== null && $consulta->circunferencia_abdominal_mm !== '' ? $consulta->circunferencia_abdominal_mm.' mm' : '—' }}</p>
-                            </div>
-                            <div class="form-field" style="margin-bottom: 0;">
-                                <span class="form-label">Compr. fêmur</span>
-                                <p class="consulta-valor">{{ $consulta->comprimento_femur_mm !== null && $consulta->comprimento_femur_mm !== '' ? $consulta->comprimento_femur_mm.' mm' : '—' }}</p>
-                            </div>
-                            <div class="form-field" style="margin-bottom: 0;">
-                                <span class="form-label">Translucência nucal</span>
-                                <p class="consulta-valor">{{ $consulta->translucencia_nucal_mm !== null && $consulta->translucencia_nucal_mm !== '' ? $consulta->translucencia_nucal_mm.' mm' : '—' }}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-section form-section--wide">
-                        <h3 class="form-section-title">Avaliação cardíaca</h3>
-                        <div class="form-field-grid form-field-grid--2">
-                            <div class="form-field" style="margin-bottom: 0;">
-                                <span class="form-label">Doppler ducto venoso</span>
-                                <p class="consulta-valor">{{ $consulta->doppler_ducto_venoso ?: '—' }}</p>
-                            </div>
-                            <div class="form-field" style="margin-bottom: 0;">
-                                <span class="form-label">Eixo cardíaco</span>
-                                <p class="consulta-valor">{{ $consulta->eixo_cardiaco ?: '—' }}</p>
-                            </div>
-                            <div class="form-field" style="margin-bottom: 0;">
-                                <span class="form-label">Quatro câmaras</span>
-                                <p class="consulta-valor">{{ $consulta->quatro_camaras ?: '—' }}</p>
-                            </div>
-                        </div>
-                        @if ($consulta->chd_confirmada && $consulta->tipo_chd)
-                            <div class="consulta-chd-box">
-                                Tipo de CHD: {{ $consulta->tipo_chd }}
-                            </div>
-                        @endif
-                    </div>
-                </div>
-            </div>
-        @empty
-            <div class="main-card" style="text-align: center; color: var(--muted); padding: 40px 24px;">
-                Nenhuma consulta registrada.
-            </div>
-        @endforelse
-
-    </div>
 </div>
+
+@if ($podeEnviarEmail)
+    <div id="modalEmail"
+         class="app-modal-overlay"
+         style="background: rgba(28, 26, 26, 0.45); backdrop-filter: blur(4px);"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="modalEmailTitulo"
+         aria-hidden="true">
+        <div class="main-card app-modal-panel app-modal-panel--lg" style="padding: 28px;" onclick="event.stopPropagation()">
+            <h2 id="modalEmailTitulo" style="font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--primary); margin-bottom: 8px;">
+                Enviar e-mail
+            </h2>
+            <p style="color: var(--muted); margin-bottom: 20px; line-height: 1.5; font-size: 14px;">
+                Para {{ $gestante->nome_exibicao }} · {{ $gestante->email }}
+            </p>
+            @if (! empty($emailLogMailer))
+                <p style="color: var(--muted); margin-bottom: 16px; line-height: 1.5; font-size: 13px; padding: 10px 12px; border-radius: 10px; background: rgba(230, 126, 34, 0.08);">
+                    O mailer atual é <code>log</code>: o envio será gravado em <code>storage/logs</code>, não na caixa de entrada. Configure SMTP no <code>.env</code> para entrega real.
+                </p>
+            @endif
+
+            <form method="POST" action="{{ route('gestantes.email', $gestante) }}" id="formEmail">
+                @csrf
+                <div class="form-field" style="margin-bottom: 16px;">
+                    <label class="form-label" for="emailTipo">Template (conforme esta gestante)</label>
+                    <select name="tipo" id="emailTipo" class="form-input" required>
+                        @foreach (($emailTemplates ?? []) as $key => $label)
+                            <option value="{{ $key }}" @selected(($emailTemplateSugerido ?? '') === $key)>{{ $label }}</option>
+                        @endforeach
+                        <option value="personalizada">Personalizada (escrever do zero)</option>
+                    </select>
+                </div>
+                <div class="form-field" style="margin-bottom: 16px;">
+                    <label class="form-label" for="emailAssunto">Assunto</label>
+                    <input type="text"
+                           name="assunto"
+                           id="emailAssunto"
+                           class="form-input"
+                           required
+                           maxlength="255">
+                </div>
+                <div class="form-field" style="margin-bottom: 20px;">
+                    <label class="form-label" for="emailMensagem">Mensagem</label>
+                    <textarea name="mensagem"
+                              id="emailMensagem"
+                              class="form-input"
+                              rows="10"
+                              required
+                              maxlength="4000"
+                              style="resize: vertical; min-height: 180px; font-family: inherit; line-height: 1.5;"></textarea>
+                    <p style="margin: 8px 0 0; font-size: 12px; color: var(--muted);">Você pode editar antes de enviar.</p>
+                </div>
+                <div class="app-modal-actions">
+                    <button type="button" id="btnFecharEmail"
+                            style="padding: 10px 18px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; font-weight: 600; color: var(--text);">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn-primary-custom">
+                        Enviar agora
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            const prompts = @json($emailPrompts ?? []);
+            const assuntos = @json($emailAssuntos ?? []);
+            const modal = document.getElementById('modalEmail');
+            const tipo = document.getElementById('emailTipo');
+            const assunto = document.getElementById('emailAssunto');
+            const mensagem = document.getElementById('emailMensagem');
+            const btnAbrir = document.getElementById('btnAbrirEmail');
+            const btnFechar = document.getElementById('btnFecharEmail');
+
+            function aplicarPrompt() {
+                const key = tipo.value;
+                if (key === 'personalizada') {
+                    if (!mensagem.dataset.touched) {
+                        mensagem.value = '';
+                    }
+                    if (!assunto.dataset.touched) {
+                        assunto.value = 'Mensagem do Cardioprenatal';
+                    }
+                    return;
+                }
+                mensagem.value = prompts[key] || '';
+                assunto.value = assuntos[key] || 'Mensagem do Cardioprenatal';
+                mensagem.dataset.touched = '';
+                assunto.dataset.touched = '';
+            }
+
+            function abrir() {
+                aplicarPrompt();
+                modal.classList.add('is-open');
+                modal.setAttribute('aria-hidden', 'false');
+                document.body.style.overflow = 'hidden';
+                mensagem.focus();
+            }
+
+            function fechar() {
+                modal.classList.remove('is-open');
+                modal.setAttribute('aria-hidden', 'true');
+                document.body.style.overflow = '';
+            }
+
+            if (btnAbrir) btnAbrir.addEventListener('click', abrir);
+            if (btnFechar) btnFechar.addEventListener('click', fechar);
+            tipo.addEventListener('change', function () {
+                mensagem.dataset.touched = '';
+                assunto.dataset.touched = '';
+                aplicarPrompt();
+            });
+            mensagem.addEventListener('input', function () {
+                mensagem.dataset.touched = '1';
+            });
+            assunto.addEventListener('input', function () {
+                assunto.dataset.touched = '1';
+            });
+            modal.addEventListener('click', function (e) {
+                if (e.target === modal) fechar();
+            });
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && modal.classList.contains('is-open')) fechar();
+            });
+
+            aplicarPrompt();
+        })();
+    </script>
+@endif
 @endsection

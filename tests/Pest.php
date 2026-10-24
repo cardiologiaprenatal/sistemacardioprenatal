@@ -12,8 +12,15 @@
 */
 
 pest()->extend(Tests\TestCase::class)
- // ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
     ->in('Feature');
+
+pest()->beforeEach(function () {
+    if (config('database.default') !== 'sqlite') {
+        throw new RuntimeException(
+            'Testes recusaram a conexão '.config('database.default').'. Use sqlite (:memory:).'
+        );
+    }
+})->in('Feature');
 
 /*
 |--------------------------------------------------------------------------
@@ -40,6 +47,21 @@ expect()->extend('toBeOne', function () {
 | global functions to help you to reduce the number of lines of code in your test files.
 |
 */
+
+function usuarioComPerfil(string $role, ?string $crm = null): \App\Models\User
+{
+    $suffix = $crm ?? strtoupper(substr($role, 0, 3)).'-'.uniqid();
+
+    return \App\Models\User::query()->create([
+        'name' => 'Usuário '.$role,
+        'crm' => $suffix,
+        'email' => strtolower($suffix).'@example.test',
+        'telefone' => '11988880000',
+        'password' => 'password',
+        'role' => $role,
+        'approved_at' => now(),
+    ]);
+}
 
 function something()
 {

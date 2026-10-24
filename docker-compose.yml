@@ -8,11 +8,16 @@ services:
     working_dir: /var/www/html
     volumes:
       - ./:/var/www/html
+      - ./docker/php/zz-cardioprenatal.ini:/usr/local/etc/php/conf.d/zz-cardioprenatal.ini:ro
     env_file:
       - .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       mysql:
         condition: service_healthy
+      ml:
+        condition: service_started
     networks:
       - pretriagem
 
@@ -48,6 +53,83 @@ services:
       interval: 5s
       timeout: 5s
       retries: 20
+    networks:
+      - pretriagem
+
+  # Microsserviço ML (FastAPI) — sem acesso ao MySQL
+  # Se a AnalisePython já estiver em :8010 no host, comente `ports` ou o serviço
+  # e aponte PYTHON_API_URL=http://host.docker.internal:8010 no .env
+  ml:
+    build:
+      context: ./python_api
+      dockerfile: Dockerfile
+    container_name: pretriagem-ml
+    restart: unless-stopped
+    # Porta 8010 fica com a API canônica (AnalisePython), que expõe /gestantes.
+    # O Laravel usa PYTHON_API_URL=http://host.docker.internal:8010.
+    # ports:
+    #   - "8010:8010"
+    environment:
+      MODEL_PATH: models/model.pkl
+      METRICS_PATH: data/metricas_modelos.csv
+      MODEL_META_PATH: models/model_meta.json
+      APP_NAME: CardioPrenatal-ML
+      APP_VERSION: "1.0.0"
+      LOG_LEVEL: info
+    volumes:
+      # model.pkl (CatBoost experimento_3_completo) + model_meta.json
+      - ./python_api/models:/app/models:ro
+      - ../AnalisePython/data:/app/data:ro
+    networks:
+      - pretriagem
+
+  # Fila: ExecutarAnaliseGestante e demais jobs
+  queue:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pretriagem-queue
+    restart: unless-stopped
+    working_dir: /var/www/html
+    command: php artisan queue:work --sleep=3 --tries=3 --timeout=120 --max-time=3600
+    volumes:
+      - ./:/var/www/html
+      - ./docker/php/zz-cardioprenatal.ini:/usr/local/etc/php/conf.d/zz-cardioprenatal.ini:ro
+    env_file:
+      - .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      app:
+        condition: service_started
+    networks:
+      - pretriagem
+
+  # Agenda: dataset:sync-from-api + analises:reprocess (routes/console.php)
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pretriagem-scheduler
+    restart: unless-stopped
+    working_dir: /var/www/html
+    command: php artisan schedule:work
+    volumes:
+      - ./:/var/www/html
+      - ./docker/php/zz-cardioprenatal.ini:/usr/local/etc/php/conf.d/zz-cardioprenatal.ini:ro
+    env_file:
+      - .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      app:
+        condition: service_started
+      queue:
+        condition: service_started
     networks:
       - pretriagem
 

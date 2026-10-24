@@ -1,0 +1,3 @@
+# Artefato CatBoost de produção: models/model.pkl
+# Gerado por: python -m scripts.export_catboost_producao
+# Sem o arquivo, a API usa heurística como fallback.

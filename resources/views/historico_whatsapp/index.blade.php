@@ -1,9 +1,10 @@
 @extends('layouts.app')
 
-@section('title', 'Histórico de atendimento — Cardioprenatal')
+@section('title', 'Histórico de atendimento. Cardioprenatal')
 
 @section('content')
     @php
+        use App\Models\GestanteWhatsapp;
         $sort = $sort ?? 'ultima_data';
         $direction = $direction ?? 'desc';
         $nextDir = ($sort === 'ultima_data' && $direction === 'desc') ? 'asc' : 'desc';
@@ -11,24 +12,29 @@
             'sort' => 'ultima_data',
             'direction' => $nextDir,
         ]);
+        $pillCategoria = function (?string $categoria): string {
+            return match ($categoria) {
+                GestanteWhatsapp::CATEGORIA_LEMBRETE_CONSULTA => 'consulta-pill--warn',
+                GestanteWhatsapp::CATEGORIA_CONFIRMACAO_CONSULTA => 'consulta-pill--ok',
+                GestanteWhatsapp::CATEGORIA_LEMBRETE_RETORNO => 'consulta-pill--info',
+                default => '',
+            };
+        };
     @endphp
 
     <div class="page-header">
         <h1 class="page-title">Histórico de atendimento</h1>
-        <p class="page-subtitle">Mensagens recebidas e enviadas via WhatsApp (WAHA / n8n)</p>
+        <p class="page-subtitle">Conversas do WhatsApp com as gestantes.</p>
+        @if (request()->filled('gestante_id'))
+            <p class="page-subtitle" style="margin-top: 4px;">
+                Filtrado pela gestante #{{ request('gestante_id') }}.
+                <a href="{{ route('historico-whatsapp.index') }}" style="color: var(--accent); font-weight: 600;">Ver todas</a>
+            </p>
+        @endif
     </div>
 
-    <div class="main-card">
-        <div class="card-toolbar">
-            <h2 class="card-title" style="margin: 0; font-size: 20px;">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                </svg>
-                Lista
-            </h2>
-        </div>
-
-        <form method="GET" action="{{ route('historico-whatsapp.index') }}" class="form-section" style="margin-bottom: 24px; padding: 20px 22px;">
+    <div class="main-card" style="margin-bottom: 22px;">
+        <form method="GET" action="{{ route('historico-whatsapp.index') }}" class="form-section" style="margin-bottom: 0; padding: 20px 22px;">
             <h3 class="form-section-title" style="font-size: 17px; margin-bottom: 16px;">Filtros</h3>
             <div class="form-field-grid form-field-grid--2">
                 <div class="form-field">
@@ -45,6 +51,13 @@
                     <input class="form-input" type="text" name="telefone" id="filtro_telefone" value="{{ request('telefone') }}" placeholder="DDD + número" autocomplete="off">
                 </div>
                 <div class="form-field">
+                    <label class="form-label" for="filtro_categoria">Tipo de mensagem</label>
+                    <select class="form-input" name="categoria" id="filtro_categoria">
+                        <option value="">Todas</option>
+                        <option value="{{ GestanteWhatsapp::CATEGORIA_CONVERSA }}" @selected(request('categoria') === GestanteWhatsapp::CATEGORIA_CONVERSA)>Conversa</option>
+                    </select>
+                </div>
+                <div class="form-field">
                     <label class="form-label" for="filtro_data_inicio">Data início</label>
                     <input class="form-input" type="date" name="data_inicio" id="filtro_data_inicio" value="{{ request('data_inicio') }}">
                 </div>
@@ -55,15 +68,29 @@
             </div>
             <input type="hidden" name="sort" value="{{ $sort }}">
             <input type="hidden" name="direction" value="{{ $direction }}">
+            @if (request()->filled('gestante_id'))
+                <input type="hidden" name="gestante_id" value="{{ request('gestante_id') }}">
+            @endif
             <div class="form-actions" style="border-top: none; padding-top: 12px; margin-top: 8px;">
                 <a href="{{ route('historico-whatsapp.index') }}" class="btn-secondary-outline">Limpar</a>
                 <button type="submit" class="btn-primary-custom">Filtrar</button>
             </div>
         </form>
+    </div>
+
+    <div class="main-card">
+        <div class="card-toolbar">
+            <h2 class="card-title" style="margin: 0; font-size: 20px;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                Conversas
+            </h2>
+        </div>
 
         <p class="table-scroll-hint">↔ Deslize horizontalmente para ver todas as colunas.</p>
         <div class="table-container table-container--flush">
-            <table class="data-table">
+            <table class="data-table data-table--wide">
                 <thead>
                     <tr>
                         <th class="td-cell-nome">Nome da gestante</th>
@@ -71,7 +98,8 @@
                         <th class="td-cpf">CPF</th>
                         <th class="td-tel">Telefone</th>
                         <th class="td-msg">Última mensagem</th>
-                        <th class="td-nowrap">Tipo</th>
+                        <th class="td-nowrap">Direção</th>
+                        <th class="td-nowrap">Categoria</th>
                         <th class="td-num">Tempo de atendimento</th>
                         <th class="td-date">
                             <a href="{{ route('historico-whatsapp.index', $sortQuery) }}"
@@ -89,7 +117,8 @@
                     @forelse ($rows as $row)
                         @php
                             $tipoUltimo = $row->ultimo_tipo ?? '';
-                            $tipoLabel = $tipoUltimo === 'saida' ? 'Saída' : ($tipoUltimo === 'entrada' ? 'Entrada' : '—');
+                            $tipoLabel = $tipoUltimo === 'saida' ? 'Saída' : ($tipoUltimo === 'entrada' ? 'Entrada' : 'Não informado');
+                            $categoriaUltima = $row->ultima_categoria ?? null;
                             $tempo = $row->ultimo_tempo_atendimento;
                             $tempoFmt = $tempo !== null
                                 ? (function () use ($tempo) {
@@ -105,16 +134,29 @@
                                     }
                                     return sprintf('%ds', $sec);
                                 })()
-                                : '—';
-                            $ultimaData = $row->ultima_data ? \Carbon\Carbon::parse($row->ultima_data)->timezone(config('app.timezone'))->format('d/m/Y H:i') : '—';
+                                : 'Não informado';
+                            $ultimaData = $row->ultima_data ? \Carbon\Carbon::parse($row->ultima_data)->timezone(config('app.timezone'))->format('d/m/Y H:i') : 'Não informado';
                         @endphp
                         <tr>
                             <td class="td-cell-nome"><strong>{{ $row->nome_exibicao }}</strong></td>
                             <td class="td-num td-num--narrow"><strong>#{{ $row->id }}</strong></td>
-                            <td class="td-cpf">{{ $row->cpf ? $row->cpf_formatado : '—' }}</td>
-                            <td class="td-tel">{{ $row->telefone ? $row->telefone_formatado : '—' }}</td>
+                            <td class="td-cpf">{{ $row->cpf ? $row->cpf_formatado : 'Não informado' }}</td>
+                            <td class="td-tel">{{ $row->telefone ? $row->telefone_formatado : 'Não informado' }}</td>
                             <td class="td-msg">{{ \Illuminate\Support\Str::limit($row->ultima_mensagem ?? '', 90) }}</td>
                             <td class="td-nowrap">{{ $tipoLabel }}</td>
+                            <td class="td-nowrap">
+                                @if (in_array($categoriaUltima, [
+                                    GestanteWhatsapp::CATEGORIA_LEMBRETE_CONSULTA,
+                                    GestanteWhatsapp::CATEGORIA_LEMBRETE_RETORNO,
+                                    GestanteWhatsapp::CATEGORIA_CONFIRMACAO_CONSULTA,
+                                ], true))
+                                    <span class="consulta-pill {{ $pillCategoria($categoriaUltima) }}" style="margin: 0;">
+                                        {{ GestanteWhatsapp::labelCategoria($categoriaUltima) }}
+                                    </span>
+                                @else
+                                    {{ GestanteWhatsapp::labelCategoria($categoriaUltima) }}
+                                @endif
+                            </td>
                             <td class="td-num">{{ $tempoFmt }}</td>
                             <td class="td-date">{{ $ultimaData }}</td>
                             <td class="td-actions">
@@ -131,7 +173,7 @@
                         </tr>
                     @empty
                         <tr class="data-table-empty">
-                            <td colspan="9">
+                            <td colspan="10">
                                 <p style="margin: 0 0 8px;">Nenhum registro de atendimento por WhatsApp encontrado.</p>
                                 <p style="margin: 0; font-size: 13px; color: var(--muted); line-height: 1.5;">
                                     Só entram aqui conversas com mensagens vinculadas a uma gestante já cadastrada. Se você acabou de gerar dados de teste no terminal e a tela continua vazia,
@@ -197,10 +239,21 @@
             }
 
             function formatarData(iso) {
-                if (!iso) return '—';
+                if (!iso) return 'Não informado';
                 const d = new Date(iso);
                 if (Number.isNaN(d.getTime())) return iso;
                 return d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+            }
+
+            function pillCategoria(categoria, label) {
+                if (!categoria || categoria === 'conversa') {
+                    return escapeHtml(label || 'Conversa');
+                }
+                const cls = categoria === 'lembrete_retorno'
+                    ? 'consulta-pill--info'
+                    : (categoria === 'confirmacao_consulta' ? 'consulta-pill--ok' : 'consulta-pill--warn');
+                return '<span class="consulta-pill ' + cls + '" style="margin:0 0 0 6px; text-transform:none; letter-spacing:0;">'
+                    + escapeHtml(label || categoria) + '</span>';
             }
 
             function renderMensagens(mensagens) {
@@ -218,15 +271,17 @@
                         ? 'rgba(255,255,255,0.95)'
                         : 'linear-gradient(135deg, rgba(127,12,26,0.12), rgba(231,76,60,0.18))';
                     const border = entrada ? '1px solid rgba(240, 213, 213, 0.9)' : '1px solid rgba(127,12,26,0.2)';
-                    const label = entrada ? 'Entrada' : 'Saída';
+                    const label = m.remetente_label
+                        || (entrada ? 'Paciente' : ((m.categoria === 'lembrete_consulta' || m.categoria === 'lembrete_retorno' || m.categoria === 'confirmacao_consulta') ? 'Sistema' : 'Equipe'));
                     const tempo = m.tempo_atendimento_formatado
                         ? (' · ' + escapeHtml(m.tempo_atendimento_formatado))
                         : '';
+                    const categoriaHtml = pillCategoria(m.categoria, m.categoria_label);
 
                     html += '<div style="display: flex; justify-content: ' + align + ';">';
                     html += '<div style="max-width: 92%; border-radius: 14px; padding: 10px 14px; background: ' + bg + '; border: ' + border + '; box-shadow: 0 2px 8px rgba(127,12,26,0.06);">';
-                    html += '<div style="font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px;">'
-                        + label + ' · ' + formatarData(m.created_at) + tempo + '</div>';
+                    html += '<div style="font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; display:flex; align-items:center; flex-wrap:wrap; gap:4px;">'
+                        + label + ' · ' + formatarData(m.created_at) + tempo + categoriaHtml + '</div>';
                     html += '<div style="font-size: 14px; color: var(--text); line-height: 1.5; white-space: pre-wrap;">' + escapeHtml(m.mensagem || '') + '</div>';
                     html += '</div></div>';
                 });
@@ -237,20 +292,30 @@
             async function abrirConversa(btn) {
                 const id = btn.getAttribute('data-gestante-id');
                 const label = btn.getAttribute('data-gestante-label') || '';
+                const acompanhamentoId = btn.getAttribute('data-acompanhamento-id') || '';
+                const tituloExtra = btn.getAttribute('data-conversa-titulo') || '';
                 const modal = document.getElementById('modalConversa');
                 const body = document.getElementById('modalConversaBody');
                 const sub = document.getElementById('modalConversaSub');
+                const titulo = document.getElementById('modalConversaTitulo');
 
-                sub.textContent = label
-                    ? ('Gestante: ' + label + ' · Identificador #' + id)
-                    : ('Identificador #' + id);
+                titulo.textContent = acompanhamentoId ? 'Mensagens do agendamento' : 'Conversa';
+                sub.textContent = [
+                    label ? ('Gestante: ' + label) : ('Identificador #' + id),
+                    tituloExtra,
+                ].filter(Boolean).join(' · ');
                 body.innerHTML = '<p style="color: var(--muted); text-align: center; padding: 24px;">Carregando conversa…</p>';
                 modal.classList.add('is-open');
                 modal.setAttribute('aria-hidden', 'false');
                 document.body.style.overflow = 'hidden';
 
+                let url = '{{ url('/api/gestante-whatsapp') }}/' + encodeURIComponent(id);
+                if (acompanhamentoId) {
+                    url += '?acompanhamento_id=' + encodeURIComponent(acompanhamentoId);
+                }
+
                 try {
-                    const res = await fetch('{{ url('/api/gestante-whatsapp') }}/' + encodeURIComponent(id), {
+                    const res = await fetch(url, {
                         method: 'GET',
                         headers: { 'Accept': 'application/json' },
                         credentials: 'same-origin',

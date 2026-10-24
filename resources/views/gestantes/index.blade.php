@@ -1,15 +1,31 @@
 @extends('layouts.app')
 
-@section('title', 'Gestantes — Cardioprenatal')
+@section('title', 'Gestantes. Cardioprenatal')
 
 @section('content')
 @php
+    use App\Models\User;
     use App\Services\DashboardAnaliseService;
+
+    $podeAnalises = auth()->user()?->can(User::ABILITY_ANALISES);
+    $podeGerenciarGestantes = auth()->user()?->can(User::ABILITY_GESTANTES_MANAGE);
+    $colspan = 6 + ($podeAnalises ? 1 : 0) + 1;
 @endphp
     <div class="page-header">
         <h1 class="page-title">Gestantes</h1>
-        <p class="page-subtitle">Cadastro e acompanhamento das pacientes</p>
+        <p class="page-subtitle">Cadastro e acompanhamento no rastreio de cardiopatias congênitas em gestantes diabéticas.</p>
     </div>
+
+    @if (session('success'))
+        <div class="main-card" role="status" style="margin-bottom: 16px; border-left: 4px solid var(--success); background: rgba(39, 174, 96, 0.08);">
+            <p style="margin: 0; font-size: 15px; color: var(--text);">{{ session('success') }}</p>
+        </div>
+    @endif
+    @if (session('warning'))
+        <div class="main-card" role="alert" style="margin-bottom: 16px; border-left: 4px solid #e67e22; background: rgba(230, 126, 34, 0.08);">
+            <p style="margin: 0; font-size: 15px; color: var(--text);">{{ session('warning') }}</p>
+        </div>
+    @endif
 
     <div class="main-card">
         <div class="card-toolbar">
@@ -19,19 +35,23 @@
                 </svg>
                 Lista
             </h2>
+            @can(\App\Models\User::ABILITY_GESTANTES_MANAGE)
             <a href="{{ route('gestantes.create') }}" class="btn-primary-custom">
                 Cadastrar gestante
             </a>
+            @endcan
         </div>
 
-        <p class="table-scroll-hint">↔ Deslize horizontalmente para ver CPF, telefone e botões.</p>
+        <p class="table-scroll-hint">↔ Em telas menores, deslize para ver as colunas; no desktop aparecem todas.</p>
         <div class="table-container table-container--flush">
-            <table class="data-table">
+            <table class="data-table data-table--wide">
                 <thead>
                     <tr>
                         <th class="td-cell-nome">Nome</th>
                         <th class="td-num td-num--narrow">Nº cadastro</th>
-                        <th class="td-risco">Risco</th>
+                        @if ($podeAnalises)
+                            <th class="td-risco">Risco</th>
+                        @endif
                         <th class="td-cpf">CPF</th>
                         <th class="td-tel">Telefone</th>
                         <th class="td-date">Nascimento</th>
@@ -42,36 +62,72 @@
                 <tbody>
                     @forelse ($gestantes as $gestante)
                         @php
-                            $ua = $gestante->ultimaAnalise;
-                            $risco = ($ua && $ua->status === 'concluida') ? $ua->classificacao_risco : null;
+                            $risco = null;
+                            if ($podeAnalises) {
+                                $ua = $gestante->ultimaAnalise;
+                                $risco = ($ua && $ua->status === 'concluida') ? $ua->classificacao_risco : null;
+                            }
                         @endphp
                         <tr>
                             <td class="td-cell-nome"><strong>{{ $gestante->nome_exibicao }}</strong></td>
                             <td class="td-num td-num--narrow">#{{ $gestante->id }}</td>
+                            @if ($podeAnalises)
                             <td class="td-risco">
                                 @if ($risco)
-                                    <span class="consulta-pill consulta-pill--{{ $risco === 'alto' ? 'alert' : ($risco === 'moderado' ? 'warn' : 'ok') }}" style="margin:0;">
+                                    <span class="consulta-pill {{ DashboardAnaliseService::pillClassRisco($risco) }}" style="margin:0;">
                                         {{ DashboardAnaliseService::labelRisco($risco) }}
                                     </span>
                                 @else
-                                    <span style="color: var(--muted); font-size: 13px;">—</span>
+                                    <span style="color: var(--muted); font-size: 13px;">Não informado</span>
                                 @endif
                             </td>
-                            <td class="td-cpf">{{ $gestante->cpf ? $gestante->cpf_formatado : '—' }}</td>
-                            <td class="td-tel">{{ $gestante->telefone ? $gestante->telefone_formatado : '—' }}</td>
-                            <td class="td-date">{{ $gestante->data_nascimento ? \Carbon\Carbon::parse($gestante->data_nascimento)->format('d/m/Y') : '—' }}</td>
+                            @endif
+                            <td class="td-cpf">{{ $gestante->cpf ? $gestante->cpf_formatado : 'Não informado' }}</td>
+                            <td class="td-tel">{{ $gestante->telefone ? $gestante->telefone_formatado : 'Não informado' }}</td>
+                            <td class="td-date">{{ $gestante->data_nascimento ? \Carbon\Carbon::parse($gestante->data_nascimento)->format('d/m/Y') : 'Não informado' }}</td>
                             <td class="td-num td-num--narrow">{{ $gestante->consultas_count }}</td>
                             <td class="td-actions">
-                                <div class="td-actions-inner">
-                                    <a href="{{ route('gestantes.show', $gestante) }}" class="btn-table btn-table--primary">Ver</a>
-                                    <a href="{{ route('gestantes.edit', $gestante) }}" class="btn-table btn-table--secondary">Editar</a>
-                                    <button type="button" onclick="abrirModal({{ $gestante->id }})" class="btn-table btn-table--danger">Excluir</button>
+                                <div class="td-actions-inner td-actions-inner--icons">
+                                    <div class="td-actions-group" role="group" aria-label="Cadastro">
+                                        <a href="{{ route('gestantes.show', $gestante) }}"
+                                           class="btn-table btn-table--primary btn-table--icon"
+                                           title="Ver"
+                                           aria-label="Ver {{ $gestante->nome_exibicao }}">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                                <circle cx="12" cy="12" r="3"/>
+                                            </svg>
+                                        </a>
+                                        @if ($podeGerenciarGestantes)
+                                        <a href="{{ route('gestantes.edit', $gestante) }}"
+                                           class="btn-table btn-table--secondary btn-table--icon"
+                                           title="Editar"
+                                           aria-label="Editar {{ $gestante->nome_exibicao }}">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                <path d="M12 20h9"/>
+                                                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
+                                            </svg>
+                                        </a>
+                                        <button type="button"
+                                                onclick="abrirModal({{ $gestante->id }})"
+                                                class="btn-table btn-table--danger btn-table--icon"
+                                                title="Excluir"
+                                                aria-label="Excluir {{ $gestante->nome_exibicao }}">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                                <polyline points="3 6 5 6 21 6"/>
+                                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                                                <path d="M10 11v6"/><path d="M14 11v6"/>
+                                                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                                            </svg>
+                                        </button>
+                                        @endif
+                                    </div>
                                 </div>
                             </td>
                         </tr>
                     @empty
                         <tr class="data-table-empty">
-                            <td colspan="8">Nenhuma gestante cadastrada.</td>
+                            <td colspan="{{ $colspan }}">Nenhuma gestante cadastrada.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -85,6 +141,7 @@
         @endif
     </div>
 
+    @if ($podeGerenciarGestantes)
     <div id="modalExcluir"
          class="app-modal-overlay"
          style="background: rgba(28, 26, 26, 0.45); backdrop-filter: blur(4px);"
@@ -114,10 +171,6 @@
             </div>
         </div>
     </div>
-
-    <style>
-        .consulta-pill--warn { background: rgba(230, 126, 34, 0.15); color: #c0392b; border: 1px solid rgba(230, 126, 34, 0.35); }
-    </style>
 
     <script>
         (function () {
@@ -150,4 +203,5 @@
             });
         })();
     </script>
+    @endif
 @endsection

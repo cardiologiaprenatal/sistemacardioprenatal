@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Resources\GestanteResource;
 use App\Models\Gestante;
 use App\Models\GestanteWhatsapp;
+use App\Models\User;
 use App\Services\GestanteWhatsappMessageRecorder;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -22,6 +23,7 @@ class GestanteWhatsappController extends Controller
      */
     public function index(Request $request)
     {
+        $this->authorize(User::ABILITY_WHATSAPP);
         $query = $this->buildHistoricoResumoQuery($request);
         $this->applyOrdering($request, $query);
 
@@ -36,6 +38,8 @@ class GestanteWhatsappController extends Controller
                     'gestante' => (new GestanteResource($g))->resolve(),
                     'ultima_mensagem' => $g->ultima_mensagem,
                     'tipo' => $g->ultimo_tipo,
+                    'categoria' => $g->ultima_categoria,
+                    'categoria_label' => GestanteWhatsapp::labelCategoria($g->ultima_categoria),
                     'tempo_atendimento' => $g->ultimo_tempo_atendimento !== null ? (int) $g->ultimo_tempo_atendimento : null,
                     'tempo_atendimento_formatado' => $this->formatTempo($g->ultimo_tempo_atendimento !== null ? (int) $g->ultimo_tempo_atendimento : null),
                     'ultima_data' => $ultima?->toIso8601String(),
@@ -61,6 +65,7 @@ class GestanteWhatsappController extends Controller
      */
     public function historicoPage(Request $request): View
     {
+        $this->authorize(User::ABILITY_WHATSAPP);
         $query = $this->buildHistoricoResumoQuery($request);
         $this->applyOrdering($request, $query);
 
@@ -76,24 +81,32 @@ class GestanteWhatsappController extends Controller
     /**
      * GET /api/gestante-whatsapp/{gestante} — histórico completo da gestante (PK da tabela gestantes).
      */
-    public function show(Gestante $gestante)
+    public function show(Request $request, Gestante $gestante)
     {
+        $this->authorize(User::ABILITY_WHATSAPP);
         $mensagens = GestanteWhatsapp::query()
             ->where('gestante_id', $gestante->id)
+            ->when($request->filled('acompanhamento_id'), function ($q) use ($request) {
+                $q->where('acompanhamento_id', (int) $request->input('acompanhamento_id'));
+            })
+            ->when($request->filled('categoria'), function ($q) use ($request) {
+                $categoria = (string) $request->input('categoria');
+                if ($categoria === GestanteWhatsapp::CATEGORIA_CONVERSA) {
+                    $q->where(function ($inner) {
+                        $inner->where('categoria', GestanteWhatsapp::CATEGORIA_CONVERSA)
+                            ->orWhereNull('categoria');
+                    });
+                } else {
+                    $q->where('categoria', $categoria);
+                }
+            })
             ->orderBy('created_at')
             ->orderBy('id')
             ->get();
 
         return response()->json([
             'gestante' => new GestanteResource($gestante),
-            'mensagens' => $mensagens->map(fn (GestanteWhatsapp $m) => [
-                'id' => $m->id,
-                'mensagem' => $m->mensagem,
-                'tipo' => $m->tipo,
-                'tempo_atendimento' => $m->tempo_atendimento,
-                'tempo_atendimento_formatado' => $m->tempo_atendimento_formatado,
-                'created_at' => $m->created_at?->toIso8601String(),
-            ]),
+            'mensagens' => $mensagens->map(fn (GestanteWhatsapp $m) => $m->toConversaPayload()),
         ]);
     }
 
@@ -102,8 +115,13 @@ class GestanteWhatsappController extends Controller
      */
     public function store(Request $request)
     {
+        $extracted = $this->whatsAppMessageRecorder->extractIncoming($request->all());
+        if ($extracted !== null) {
+            $request->merge($extracted);
+        }
+
         $validated = $request->validate([
-            'telefone' => ['required', 'string', 'max:32'],
+            'telefone' => ['required', 'string', 'max:64'],
             'mensagem' => ['required', 'string'],
             'tipo' => ['required', 'in:entrada,saida'],
         ]);
@@ -113,12 +131,18 @@ class GestanteWhatsappController extends Controller
             $validated['mensagem'],
             $validated['tipo']
         );
+        $fluxo = $this->whatsAppMessageRecorder->ultimoFluxo();
 
         return response()->json([
             'id' => $row->id,
             'gestante_id' => $row->gestante_id,
             'tempo_atendimento' => $row->tempo_atendimento,
             'tempo_atendimento_formatado' => $row->tempo_atendimento_formatado,
+            'fluxo_respondido' => (bool) ($fluxo['respondido'] ?? false),
+            'pular_ia' => (bool) ($fluxo['pular_ia'] ?? false),
+            'fluxo_estado' => $fluxo['estado'] ?? null,
+            'intencao' => $fluxo['intencao'] ?? null,
+            'resposta_pronta' => $fluxo['resposta'] ?? null,
         ], 201);
     }
 
@@ -126,8 +150,21 @@ class GestanteWhatsappController extends Controller
     {
         $sub = DB::table('gestante_whatsapp as gw')
             ->select('gw.gestante_id', DB::raw('MAX(gw.id) as last_whatsapp_id'))
-            ->whereNotNull('gw.gestante_id')
-            ->groupBy('gw.gestante_id');
+            ->whereNotNull('gw.gestante_id');
+
+        if ($request->filled('categoria')) {
+            $categoria = (string) $request->input('categoria');
+            if ($categoria === GestanteWhatsapp::CATEGORIA_CONVERSA) {
+                $sub->where(function ($inner) {
+                    $inner->where('gw.categoria', GestanteWhatsapp::CATEGORIA_CONVERSA)
+                        ->orWhereNull('gw.categoria');
+                });
+            } else {
+                $sub->where('gw.categoria', $categoria);
+            }
+        }
+
+        $sub->groupBy('gw.gestante_id');
 
         $q = Gestante::query()
             ->joinSub($sub, 'lw', function ($join) {
@@ -138,9 +175,20 @@ class GestanteWhatsappController extends Controller
                 'gestantes.*',
                 'gwl.mensagem as ultima_mensagem',
                 'gwl.tipo as ultimo_tipo',
+                'gwl.categoria as ultima_categoria',
                 'gwl.tempo_atendimento as ultimo_tempo_atendimento',
                 'gwl.created_at as ultima_data',
             ]);
+
+        if ($request->filled('gestante_id')) {
+            $codigo = trim((string) $request->input('gestante_id'));
+            if ($codigo !== '') {
+                $q->where(function ($sub) use ($codigo) {
+                    $sub->where('gestantes.id', $codigo)
+                        ->orWhere('gestantes.gestante_id', $codigo);
+                });
+            }
+        }
 
         if ($request->filled('nome')) {
             $raw = (string) $request->input('nome');

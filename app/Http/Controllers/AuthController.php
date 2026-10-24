@@ -37,14 +37,16 @@ class AuthController extends Controller
 
             return response()->json([
                 'message' => 'Erro interno no servidor.',
-                'error' => $e->getMessage(),
             ], 500);
         }
 
         if ($auth) {
             $request->session()->regenerate();
 
-            return response()->json(['message' => 'Login realizado com sucesso!']);
+            return response()->json([
+                'message' => 'Login realizado com sucesso!',
+                'redirect' => Auth::user()->homeRoute(),
+            ]);
         }
 
         return response()->json([
@@ -52,9 +54,11 @@ class AuthController extends Controller
         ], 401);
     }
 
-    public function logout()
+    public function logout(Request $request)
     {
         Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
         return redirect('/');
     }

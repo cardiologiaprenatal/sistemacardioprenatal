@@ -1,0 +1,2 @@
+# Catálogo de experimentos (CSV do pipeline AnalisePython).
+# Em Docker, docker-compose monta ../AnalisePython/data neste diretório.

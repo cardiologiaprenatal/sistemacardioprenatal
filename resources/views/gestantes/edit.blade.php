@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Editar gestante — Cardioprenatal')
+@section('title', 'Editar gestante. Cardioprenatal')
 
 @section('content')
     <div class="page-header">
@@ -54,6 +54,15 @@
                            value="{{ old('telefone', $gestante->telefone_formatado ?? $gestante->telefone) }}"
                            placeholder="(00) 00000-0000"
                            inputmode="tel" maxlength="16" required
+                           style="width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border); font-family: inherit; font-size: 15px;">
+                </div>
+
+                <div>
+                    <label for="email" style="display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 8px;">E-mail (opcional)</label>
+                    <input type="email" name="email" id="email"
+                           value="{{ old('email', $gestante->email) }}"
+                           placeholder="nome@email.com"
+                           autocomplete="email" maxlength="255"
                            style="width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border); font-family: inherit; font-size: 15px;">
                 </div>
 

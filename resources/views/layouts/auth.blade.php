@@ -20,6 +20,10 @@
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+        html {
+            color-scheme: light;
+        }
+
         body {
             font-family: 'DM Sans', sans-serif;
             background: #fdf5f5;
@@ -113,6 +117,20 @@
             width: 11px; height: 11px;
             color: rgba(192,57,43,.5);
         }
+
+        .auth-footer-logo {
+            display: inline-flex;
+            width: 28px;
+            height: 28px;
+            overflow: hidden;
+            border-radius: 6px;
+            background: #fff;
+            box-shadow: 0 0 0 1px rgba(127, 12, 26, 0.12);
+        }
+        .auth-footer-logo img {
+            transform: scale(1.72);
+            transform-origin: center 28%;
+        }
     </style>
 </head>
 
@@ -135,12 +153,11 @@
         @yield('content')
         
         <div class="auth-footer">
-            <span style="display: inline-flex; align-items: center; gap: 6px;">
-                <span style="display: inline-flex; align-items: center; gap: 4px;" aria-hidden="true">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="#c0392b"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="#c0392b"><path d="M12 4.75a3.15 3.15 0 1 0 0 6.3 3.15 3.15 0 0 0 0-6.3z"/><path d="M12 12.2c-3.35 0-6.1 2.15-6.1 4.8V21h12.2v-4c0-2.65-2.75-4.8-6.1-4.8z"/></svg>
+            <span style="display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center;">
+                <span class="auth-footer-logo">
+                    @include('partials.brand-logo', ['variant' => 'footer', 'decorative' => true])
                 </span>
-                Cardioprenatal · CHD · pré-natal © {{ date('Y') }}
+                Cardioprenatal. Rastreio de cardiopatias congênitas em gestantes diabéticas. © {{ date('Y') }}
             </span>
         </div>
     </div>

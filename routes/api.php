@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\N8nWhatsappMensagemController;
+use App\Http\Controllers\Api\N8nWhatsappRagController;
 use App\Http\Controllers\GestanteWhatsappController;
 use Illuminate\Support\Facades\Route;
 
@@ -19,3 +20,10 @@ Route::post('/gestante-whatsapp', [GestanteWhatsappController::class, 'store'])
 Route::post('/v1/n8n/whatsapp/mensagens/{telefone}', [N8nWhatsappMensagemController::class, 'store'])
     ->where('telefone', '[0-9]{10,16}')
     ->middleware(['whatsapp.webhook', 'throttle:120,1']);
+
+/*
+| API v1 — RAG: contexto clínico / documentos da gestante para o prompt do WhatsApp.
+*/
+Route::match(['get', 'post'], '/v1/n8n/whatsapp/rag/{telefone}', [N8nWhatsappRagController::class, 'show'])
+    ->where('telefone', '[0-9]{10,16}')
+    ->middleware(['whatsapp.webhook', 'throttle:60,1']);

@@ -8,13 +8,11 @@ class Consulta extends Model
 {
     protected $table = 'consultas';
 
-
     protected $fillable = [
         'gestante_id',
         'consulta_numero',
         'data_consulta',
         'idade_materna',
-        'idade',
         'idade_gestacional',
         'etnia',
         'imc_pre_gestacional',
@@ -110,7 +108,6 @@ class Consulta extends Model
         'crescimento_fetal_rcf_iugr' => 'boolean',
         'chd_confirmada' => 'boolean',
     ];
-
 
     public function gestante()
     {

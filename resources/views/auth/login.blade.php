@@ -18,25 +18,6 @@
         --surface:      #ffffff;
     }
 
-    @media (prefers-color-scheme: dark) {
-        :root {
-            --surface:      #1e1e1e;
-            --text:         #e0e0e0;
-            --muted:        #a0a0a0;
-            --border:       #333333;
-            --accent-light: #2c0b0e;
-        }
-
-        .field-input {
-            background-color: #262626;
-            color: #fff;
-        }
-
-        .login-card {
-            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
-        }
-    }
-
     .login-card {
         background: var(--surface);
         border-radius: 28px;
@@ -58,53 +39,21 @@
     }
 
     .login-logo {
-        display: inline-flex;
-        align-items: center;
+        display: flex;
         justify-content: center;
-        gap: 8px;
-        min-width: 76px;
-        height: 68px;
-        padding: 0 18px;
-        background: linear-gradient(135deg, var(--primary), var(--accent-mid));
-        border-radius: 20px;
-        margin-bottom: 20px;
-        color: #fff;
+        margin-bottom: 12px;
     }
 
-    .login-logo svg {
-        flex-shrink: 0;
-        filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.12));
-    }
-
-    .login-logo .heart-brand {
-        width: 32px;
-        height: 32px;
-        transform-origin: center;
-        animation: loginHeartPulse 2.4s ease-in-out infinite;
-    }
-
-    .login-logo .icon-baby-brand {
-        width: 30px;
-        height: 30px;
-        opacity: 0.98;
-    }
-
-    @keyframes loginHeartPulse {
-        0%, 100% { transform: scale(1); }
-        12% { transform: scale(1.1); }
-        24% { transform: scale(1); }
-        36% { transform: scale(1.06); }
-        48% { transform: scale(1); }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-        .login-logo .heart-brand { animation: none; }
-    }
-
-    .login-title {
-        font-family: 'DM Serif Display', serif;
-        font-size: 28px;
-        color: var(--primary);
+    .login-sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
     }
 
     .login-subtitle {
@@ -216,34 +165,35 @@
         text-decoration: none;
     }
 
+    .login-forgot {
+        text-align: right;
+        margin: -6px 0 18px;
+    }
+    .login-forgot a {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--accent);
+        text-decoration: none;
+    }
+
     @media (max-width: 520px) {
         .login-card {
             padding: 28px 18px;
             max-width: calc(100vw - 24px);
             border-radius: 22px;
         }
-
-        .login-title {
-            font-size: clamp(1.35rem, 5vw, 1.75rem);
-        }
     }
 </style>
 
 <div class="login-card">
     <div class="login-header">
-        <div class="login-logo" aria-hidden="true" title="Coração e bebê">
-            <svg class="heart-brand" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-            </svg>
-            <svg class="icon-baby-brand" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 4.75a3.15 3.15 0 1 0 0 6.3 3.15 3.15 0 0 0 0-6.3z"/>
-                <path d="M12 12.2c-3.35 0-6.1 2.15-6.1 4.8V21h12.2v-4c0-2.65-2.75-4.8-6.1-4.8z"/>
-            </svg>
+        <div class="login-logo">
+            @include('partials.brand-logo', ['variant' => 'auth'])
         </div>
-        <h1 class="login-title">Cardioprenatal</h1>
+        <h1 class="login-sr-only">Cardioprenatal</h1>
         <p class="login-subtitle">
-            <strong style="color: var(--primary); font-weight: 600;">Acesso do médico</strong>
-            — rastreio de cardiopatias congênitas no pré-natal. Entre com seu
+            <strong style="color: var(--primary); font-weight: 600;">Acesso da equipe</strong>.
+            Rastreio de cardiopatias congênitas em gestantes diabéticas. Entre com seu
             <strong style="color: var(--text); font-weight: 600;">CRM</strong> e senha.
         </p>
     </div>
@@ -278,6 +228,10 @@
             @error('password') <p class="field-error">{{ $message }}</p> @enderror
         </div>
 
+        <div class="login-forgot">
+            <a href="{{ route('password.request') }}">Esqueci minha senha</a>
+        </div>
+
         <button type="submit" class="btn-primary" id="submitBtn">
             <span class="btn-spinner"></span>
             <span class="btn-label">Entrar</span>
@@ -291,6 +245,20 @@
 </div>
 
 @include('partials.form-masks')
+
+@if (session('success'))
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        if (typeof Noty === 'undefined') return;
+        new Noty({
+            type: 'success',
+            layout: 'topRight',
+            text: @json(session('success')),
+            timeout: 4500,
+        }).show();
+    });
+</script>
+@endif
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
@@ -314,7 +282,58 @@
     const loginForm = document.getElementById('loginForm');
     const submitBtn = document.getElementById('submitBtn');
 
-    loginForm.addEventListener('submit', function (e) {
+    const attemptError = 'Não foi possível concluir a tentativa. Tente novamente.';
+
+    function readCookie(name) {
+        const match = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()[\]\\/+^])/g, '\\$1') + '=([^;]*)'));
+        return match ? decodeURIComponent(match[1]) : null;
+    }
+
+    function applyCsrf(token) {
+        if (!token) return;
+        const input = loginForm.querySelector('input[name="_token"]');
+        if (input) input.value = token;
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        if (meta) meta.setAttribute('content', token);
+    }
+
+    async function refreshCsrf() {
+        const response = await fetch('{{ url('/login') }}', {
+            method: 'GET',
+            credentials: 'same-origin',
+            headers: { 'Accept': 'text/html' },
+        });
+        const html = await response.text();
+        const match = html.match(/name="_token" value="([^"]+)"/)
+            || html.match(/name="csrf-token" content="([^"]+)"/);
+        applyCsrf(match ? match[1] : '');
+    }
+
+    function postLogin() {
+        const formToken = loginForm.querySelector('input[name="_token"]')?.value
+            || document.querySelector('meta[name="csrf-token"]')?.content
+            || '';
+        const xsrfCookie = readCookie('XSRF-TOKEN');
+        const headers = {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+        };
+        if (formToken) {
+            headers['X-CSRF-TOKEN'] = formToken;
+        }
+        if (xsrfCookie) {
+            headers['X-XSRF-TOKEN'] = xsrfCookie;
+        }
+
+        return fetch('{{ url('/login') }}', {
+            method: 'POST',
+            headers,
+            body: new FormData(loginForm),
+            credentials: 'same-origin',
+        });
+    }
+
+    loginForm.addEventListener('submit', async function (e) {
         e.preventDefault();
 
         submitBtn.classList.add('loading');
@@ -325,30 +344,27 @@
             crmEl.value = normalizeCRMValue(crmEl.value);
         }
 
-        fetch('{{ route('login') }}', {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-            body: new FormData(this),
-            credentials: 'same-origin',
-        })
-        .then(async response => {
+        try {
+            let response = await postLogin();
+            if (response.status === 419) {
+                await refreshCsrf();
+                response = await postLogin();
+            }
+
             const raw = await response.text();
+            if (response.status === 419) {
+                throw { message: attemptError };
+            }
+
             let data = null;
             try {
                 data = raw ? JSON.parse(raw) : null;
             } catch (_) {
-                if (response.status === 419 || /Page Expired|CSRF/i.test(raw)) {
-                    throw { message: 'Sessão expirada. Recarregue a página (F5) e tente novamente.' };
-                }
-                throw { message: `Resposta inválida do servidor (${response.status}). Recarregue a página.` };
+                throw { message: attemptError };
             }
 
             if (!response.ok) {
-                throw data || { message: `Erro no servidor (${response.status})` };
+                throw data || { message: attemptError };
             }
 
             new Noty({
@@ -358,18 +374,14 @@
                 timeout: 2000,
             }).show();
 
-            setTimeout(() => { window.location.href = '/dashboard'; }, 2000);
-        })
-        .catch(error => {
+            setTimeout(() => { window.location.href = (data.redirect || '/dashboard'); }, 2000);
+        } catch (error) {
             submitBtn.classList.remove('loading');
             submitBtn.disabled = false;
 
             let msg = error.error || error.message || 'Erro inesperado ao tentar login';
             if (error.errors) {
                 msg = Object.values(error.errors).flat()[0];
-            }
-            if (typeof msg === 'string' && msg.includes('Unexpected token')) {
-                msg = 'Sessão expirada. Recarregue a página (F5) e tente novamente.';
             }
 
             new Noty({
@@ -378,7 +390,7 @@
                 text: msg,
                 timeout: 4000,
             }).show();
-        });
+        }
     });
 </script>
 

@@ -44,8 +44,9 @@ return [
             'host' => env('MAIL_HOST', '127.0.0.1'),
             'port' => env('MAIL_PORT', 2525),
             'username' => env('MAIL_USERNAME'),
-            'password' => env('MAIL_PASSWORD'),
-            'timeout' => null,
+            'password' => trim((string) env('MAIL_PASSWORD'), "\"'"),
+            'timeout' => 30,
+            'encryption' => env('MAIL_ENCRYPTION'),
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
         ],
 
@@ -114,5 +115,11 @@ return [
         'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
         'name' => env('MAIL_FROM_NAME', 'Example'),
     ],
+
+    /*
+    | Envio SMTP em espera: não dispara e-mail nem exibe erro de autenticação.
+    | Defina MAIL_STANDBY=false quando o Gmail/SMTP estiver configurado.
+    */
+    'standby' => filter_var(env('MAIL_STANDBY', true), FILTER_VALIDATE_BOOLEAN),
 
 ];

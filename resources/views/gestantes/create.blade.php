@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Nova gestante — Cardioprenatal')
+@section('title', 'Nova gestante. Cardioprenatal')
 
 @section('content')
     <div class="page-header">
@@ -43,7 +43,16 @@
                                autocomplete="tel" inputmode="tel" maxlength="16" required
                                style="width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border); font-family: inherit; font-size: 15px;">
                         <p style="font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.4;">
-                            Armazenamos apenas dígitos — compatível com integrações tipo <a href="https://github.com/alexoliveira46/gestrisk-ai-whatsapp" target="_blank" rel="noopener noreferrer" style="color: var(--accent);">WhatsApp (WAHA)</a>.
+                            Informe o telefone com DDD. O sistema guarda somente os números.
+                        </p>
+                    </div>
+                    <div style="grid-column: 1 / -1;">
+                        <label for="email" style="display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 8px;">E-mail (opcional)</label>
+                        <input type="email" name="email" id="email" value="{{ old('email') }}" placeholder="nome@email.com"
+                               autocomplete="email" maxlength="255"
+                               style="width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border); font-family: inherit; font-size: 15px;">
+                        <p style="font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.4;">
+                            Se informado, enviamos uma mensagem de boas-vindas por e-mail após o cadastro.
                         </p>
                     </div>
                 </div>

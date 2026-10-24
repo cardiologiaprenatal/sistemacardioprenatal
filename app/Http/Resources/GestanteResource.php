@@ -24,6 +24,7 @@ class GestanteResource extends JsonResource
             'cpf_formatado' => $this->cpf_formatado,
             'telefone' => $this->telefone,
             'telefone_formatado' => $this->telefone_formatado,
+            'email' => $this->email,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

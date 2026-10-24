@@ -2,7 +2,7 @@
 
 @section('title', 'Cadastro')
 
-@section('subtitle', 'Cadastro do médico')
+@section('subtitle', 'Cadastro da equipe')
 
 @section('content')
 
@@ -20,42 +20,7 @@
         --muted:        #8a6f6f;
         --border:       #f0d5d5;
         --surface:      #ffffff;
-        --bg:           #fdf5f5;
     }
-
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-        font-family: 'DM Sans', sans-serif;
-        background: var(--bg);
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        position: relative;
-        overflow-y: auto;
-    }
-
-    body::before {
-        content: '';
-        position: fixed;
-        inset: 0;
-        background:
-            radial-gradient(ellipse 80% 60% at 75% -10%, rgba(192,57,43,.15) 0%, transparent 70%),
-            radial-gradient(ellipse 60% 50% at -10% 85%, rgba(127,12,26,.12) 0%, transparent 65%);
-        pointer-events: none;
-        z-index: 0;
-    }
-
-    .deco-circle {
-        position: fixed;
-        border-radius: 50%;
-        pointer-events: none;
-        z-index: 0;
-    }
-    .deco-circle-1 { width: 380px; height: 380px; border: 1.5px solid rgba(192,57,43,.13); top: -120px; right: -90px; }
-    .deco-circle-2 { width: 220px; height: 220px; border: 1.5px solid rgba(127,12,26,.09); bottom: 50px; left: -70px; }
-    .deco-circle-3 { width: 100px; height: 100px; background: rgba(231,76,60,.06); top: 35%; left: 4%; border-radius: 50%; }
 
     /* Card */
     .register-card {
@@ -83,32 +48,18 @@
     .register-header { text-align: center; margin-bottom: 32px; }
 
     .register-logo {
-        display: inline-flex;
-        align-items: center;
+        display: flex;
         justify-content: center;
-        width: 68px; height: 68px;
-        background: linear-gradient(135deg, var(--primary), var(--accent-mid));
-        border-radius: 20px;
-        margin-bottom: 18px;
-        box-shadow: 0 6px 20px rgba(192,57,43,.35);
-        position: relative;
+        margin-bottom: 14px;
+        background: none;
+        box-shadow: none;
+        width: auto;
+        height: auto;
+        border-radius: 0;
+        position: static;
     }
 
-    .register-logo::after {
-        content: '';
-        position: absolute;
-        inset: -4px;
-        border-radius: 24px;
-        border: 2px solid rgba(192,57,43,.3);
-        animation: pulse 2s ease-in-out infinite;
-    }
-
-    @keyframes pulse {
-        0%, 100% { transform: scale(1); opacity: .6; }
-        50%       { transform: scale(1.08); opacity: .15; }
-    }
-
-    .register-logo svg { width: 34px; height: 34px; color: #fff; filter: drop-shadow(0 2px 4px rgba(0,0,0,.2)); }
+    .register-logo::after { display: none; }
 
     .register-title {
         font-family: 'DM Serif Display', serif;
@@ -118,7 +69,13 @@
         line-height: 1.2;
     }
 
-    .register-subtitle { font-size: 14px; color: var(--muted); margin-top: 6px; }
+    .register-subtitle {
+        font-size: 14px;
+        color: var(--muted);
+        line-height: 1.45;
+        max-width: 22rem;
+        margin: 6px auto 0;
+    }
 
     .register-badge {
         display: inline-flex;
@@ -176,7 +133,7 @@
         font-size: 14.5px;
         font-family: 'DM Sans', sans-serif;
         color: var(--text);
-        background: #fffafa;
+        background: var(--surface);
         outline: none;
         transition: border-color .2s, box-shadow .2s, background .2s;
     }
@@ -253,31 +210,29 @@
     .link-login:hover { color: var(--primary); text-decoration: underline; }
 
     @media (max-width: 520px) {
-        .register-card { padding: 36px 20px 30px; border-radius: 20px; }
+        .register-card {
+            padding: 28px 18px;
+            max-width: calc(100vw - 24px);
+            border-radius: 22px;
+        }
         .fields-grid { grid-template-columns: 1fr; }
         .field-full { grid-column: 1; }
         .register-title { font-size: 21px; }
     }
 </style>
 
-<div class="deco-circle deco-circle-1"></div>
-<div class="deco-circle deco-circle-2"></div>
-<div class="deco-circle deco-circle-3"></div>
-
 <div class="register-card">
 
     <div class="register-header">
         <div class="register-logo">
-            <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-            </svg>
+            @include('partials.brand-logo', ['variant' => 'auth'])
         </div>
-        <h1 class="register-title">Criar conta de médico</h1>
-        <p class="register-subtitle">Preencha seus dados para acessar o sistema (CRM, nome e contato).</p>
-        <span class="register-badge">
-            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-            Cardiologia
-        </span>
+        <h1 class="register-title">Criar conta</h1>
+        <p class="register-subtitle">
+            <strong style="color: var(--primary); font-weight: 600;">Cadastro da equipe</strong>.
+            Rastreio de cardiopatias congênitas em gestantes diabéticas. Informe seu
+            <strong style="color: var(--text); font-weight: 600;">CRM</strong> e senha.
+        </p>
     </div>
 
     <form method="POST" id="registerForm" novalidate>
@@ -297,6 +252,28 @@
                         class="field-input {{ $errors->has('nome') ? 'is-error' : '' }}">
                 </div>
                 @error('nome')
+                    <p class="field-error">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        {{ $message }}
+                    </p>
+                @enderror
+            </div>
+
+            {{-- Perfil --}}
+            <div class="field field-full">
+                <label class="field-label" for="role">Perfil de acesso</label>
+                <div class="field-wrap">
+                    <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                    <select id="role" name="role"
+                        class="field-input {{ $errors->has('role') ? 'is-error' : '' }}">
+                        @foreach (\App\Models\User::publicRoleOptions() as $value => $label)
+                            <option value="{{ $value }}" @selected(old('role', \App\Models\User::ROLE_MEDICO) === $value)>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                @error('role')
                     <p class="field-error">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                         {{ $message }}
@@ -368,6 +345,18 @@
                         {{ $message }}
                     </p>
                 @enderror
+            </div>
+
+            <div class="field field-full">
+                <label class="field-label" for="password_confirmation">Confirmar senha</label>
+                <div class="field-wrap">
+                    <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                    <input type="password" id="password_confirmation" name="password_confirmation"
+                        placeholder="Repita a senha" autocomplete="new-password"
+                        class="field-input">
+                </div>
             </div>
 
         </div>
@@ -451,42 +440,85 @@
     const registerForm = document.getElementById('registerForm');
     const submitBtn    = document.getElementById('submitBtn');
 
-    registerForm.addEventListener('submit', function (e) {
+    registerForm.addEventListener('submit', async function (e) {
         e.preventDefault();
 
         submitBtn.classList.add('loading');
         submitBtn.disabled = true;
+
+        const confirmation = document.getElementById('password_confirmation');
+        if (passwordInput.value !== confirmation.value) {
+            submitBtn.classList.remove('loading');
+            submitBtn.disabled = false;
+            new Noty({
+                type: 'error',
+                layout: 'topRight',
+                text: 'A confirmação da senha não confere.',
+                timeout: 3000
+            }).show();
+            return;
+        }
 
         const crmEl = document.getElementById('crm');
         if (crmEl) {
             crmEl.value = normalizeCRMValue(crmEl.value);
         }
 
-        const formData = new FormData(this);
+        const attemptError = 'Não foi possível concluir a tentativa. Tente novamente.';
 
-        fetch(@json(route('users.store')), {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-            body: formData,
-            credentials: 'same-origin',
-        })
-        .then(async response => {
+        function applyCsrf(token) {
+            if (!token) return;
+            const input = registerForm.querySelector('input[name="_token"]');
+            if (input) input.value = token;
+            const meta = document.querySelector('meta[name="csrf-token"]');
+            if (meta) meta.setAttribute('content', token);
+        }
+
+        async function refreshCsrf() {
+            const response = await fetch(@json(route('users.create')), {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: { 'Accept': 'text/html' },
+            });
+            const html = await response.text();
+            const match = html.match(/name="csrf-token" content="([^"]+)"/)
+                || html.match(/name="_token" value="([^"]+)"/);
+            applyCsrf(match ? match[1] : '');
+        }
+
+        function postRegister() {
+            return fetch(@json(route('users.store')), {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: new FormData(registerForm),
+                credentials: 'same-origin',
+            });
+        }
+
+        try {
+            let response = await postRegister();
+            if (response.status === 419) {
+                await refreshCsrf();
+                response = await postRegister();
+            }
+
             const raw = await response.text();
+            if (response.status === 419) {
+                throw { message: attemptError };
+            }
+
             let data = null;
             try {
                 data = raw ? JSON.parse(raw) : null;
             } catch (_) {
-                if (response.status === 419 || /Page Expired|CSRF/i.test(raw)) {
-                    throw { message: 'Sessão expirada. Recarregue a página (F5) e tente novamente.' };
-                }
-                throw { message: `Resposta inválida do servidor (${response.status}). Recarregue a página.` };
+                throw { message: attemptError };
             }
 
-            if (!response.ok) throw data || { message: `Erro no servidor (${response.status})` };
+            if (!response.ok) throw data || { message: attemptError };
 
             const msg = data.message || 'Conta criada com sucesso! Redirecionando para o login…';
             const next = (data.redirect || '/login');
@@ -501,8 +533,7 @@
             setTimeout(() => {
                 window.location.href = next;
             }, 1800);
-        })
-        .catch(error => {
+        } catch (error) {
             submitBtn.classList.remove('loading');
             submitBtn.disabled = false;
 
@@ -515,18 +546,13 @@
                 return;
             }
 
-            let msg = error.message || 'Erro ao criar conta';
-            if (typeof msg === 'string' && msg.includes('Unexpected token')) {
-                msg = 'Sessão expirada. Recarregue a página (F5) e tente novamente.';
-            }
-
             new Noty({
                 type: 'error',
                 layout: 'topRight',
-                text: msg,
+                text: error.message || 'Erro ao criar conta',
                 timeout: 4000
             }).show();
-        });
+        }
     });
 </script>
 
